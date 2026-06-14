@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Trenes Madrid</title>
+<style>
+  :root {
+    --white: #ffffff;
+    --off: #f7f8fc;
+    --ink: #0a0a0f;
+    --ink2: #4a5068;
+    --muted: #9198b0;
+    --border: #e4e7f0;
+    --blue: #1d3fdb;
+    --blue-lt: #eef1fd;
+    --c7: #d92b2b;
+    --c7-lt: #fdf0f0;
+    --c10: #0e9e57;
+    --c10-lt: #edfaf4;
+    --civis: #d97b0e;
+    --civis-lt: #fef6ea;
+    --ok: #0e9e57;
+    --warn: #d97b0e;
+    --bad: #d92b2b;
+    --mono: 'SF Mono','Consolas','Liberation Mono',monospace;
+    --r: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--off); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--off);
+    color: var(--ink);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── LAYOUT ── */
+  .app { max-width: 480px; margin: 0 auto; padding: 0 0 40px; }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
+  .app-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--blue); display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; flex-shrink: 0;
+  }
+  .app-name { font-size: .95rem; font-weight: 700; color: var(--ink); letter-spacing: -.02em; }
+  .app-sub  { font-size: .6rem; color: var(--muted); margin-top: 1px; letter-spacing: .03em; }
+  .clock-wrap { text-align: right; }
+  .clock-time { font-family: var(--mono); font-size: 1.35rem; font-weight: 700; color: var(--ink); line-height: 1; letter-spacing: -.02em; }
+  .clock-date { font-size: .58rem; color: var(--muted); margin-top: 2px; }
+
+  /* ── RT PILL ── */
+  .rt-pill {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 14px; margin: 12px 16px 0;
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: 100px; font-size: .65rem; color: var(--ink2);
+  }
+  .rt-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--muted); flex-shrink: 0; transition: background .4s;
+  }
+  .rt-dot.on  { background: var(--ok); box-shadow: 0 0 0 2px rgba(14,158,87,.2); animation: blink 2s infinite; }
+  .rt-dot.err { background: var(--bad); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .rt-txt { flex: 1; }
+  .rt-time { font-family: var(--mono); font-size: .6rem; color: var(--muted); margin-left: auto; }
+
+  /* ── QUICK BUTTONS ── */
+  .section { padding: 14px 16px 0; }
+  .section-label {
+    font-size: .58rem; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .1em; margin-bottom: 8px;
+  }
+  .quick-row { display: flex; gap: 8px; }
+  .quick-btn {
+    flex: 1; background: var(--white); border: 1.5px solid var(--border);
+    border-radius: 12px; padding: 10px 6px; cursor: pointer;
+    text-align: center; transition: border-color .15s, background .15s;
+  }
+  .quick-btn:active { transform: scale(.97); }
+  .quick-btn.active { border-color: var(--blue); background: var(--blue-lt); }
+  .qb-icon { font-size: .95rem; display: block; }
+  .qb-name { font-size: .58rem; color: var(--ink2); margin-top: 4px; font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .quick-btn.active .qb-name { color: var(--blue); font-weight: 600; }
+
+  /* ── SELECTS ── */
+  .selectors { display: flex; gap: 10px; margin-top: 12px; }
+  .sel-wrap { flex: 1; position: relative; }
+  .sel-wrap label { display: block; font-size: .58rem; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .1em; margin-bottom: 5px; }
+  select {
+    width: 100%; appearance: none; background: var(--white);
+    border: 1.5px solid var(--border); border-radius: 10px;
+    color: var(--ink); padding: 10px 30px 10px 12px;
+    font-size: .78rem; font-family: inherit; outline: none; cursor: pointer;
+    font-weight: 500;
+  }
+  select:focus { border-color: var(--blue); }
+  .sel-arrow { position: absolute; right: 11px; bottom: 11px; pointer-events: none;
+    color: var(--muted); font-size: .65rem; }
+
+  /* ── VÍA LEGEND ── */
+  .via-legend { background: var(--white); border: 1.5px solid var(--border);
+    border-radius: var(--r); padding: 10px 14px; margin-top: 10px; display: none; }
+  .via-legend.show { display: block; }
+  .vl-title { font-size: .57rem; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .1em; margin-bottom: 7px; }
+  .via-row { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; font-size: .67rem; color: var(--ink2); }
+  .via-badge { font-family: var(--mono); font-size: .58rem; font-weight: 700;
+    padding: 2px 7px; border-radius: 5px; background: var(--blue-lt); color: var(--blue); white-space: nowrap; }
+
+  /* ── TABLA HEADER ── */
+  .trains-section { padding: 14px 16px 0; }
+  .trains-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .trains-title { font-size: .75rem; font-weight: 700; color: var(--ink); }
+  .trains-badge {
+    font-size: .58rem; font-weight: 600; padding: 3px 8px;
+    border-radius: 100px; background: var(--blue-lt); color: var(--blue);
+  }
+  .trains-badge.est { background: var(--off); color: var(--muted); }
+
+  /* ── TRAIN CARD — panel de salidas ── */
+  .trains-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .train-card {
+    background: var(--white);
+    border-radius: var(--r);
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: stretch;
+    overflow: hidden;
+    transition: box-shadow .2s;
+  }
+  .train-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.07); }
+  .train-card.inminent { border-color: var(--warn); }
+
+  /* barra lateral de color de línea */
+  .card-stripe { width: 5px; flex-shrink: 0; }
+  .card-stripe.c7    { background: var(--c7); }
+  .card-stripe.c10   { background: var(--c10); }
+  .card-stripe.civis { background: var(--civis); }
+
+  .card-body { flex: 1; padding: 12px 12px 12px 14px; display: grid;
+    grid-template-columns: auto 1fr auto; gap: 0 12px; align-items: center; min-width: 0; }
+
+  /* línea badge */
+  .line-chip {
+    display: flex; flex-direction: column; align-items: center; gap: 3px; flex-shrink: 0;
+  }
+  .line-pill {
+    font-size: .62rem; font-weight: 800; padding: 4px 7px;
+    border-radius: 6px; color: #fff; letter-spacing: -.01em; white-space: nowrap;
+  }
+  .line-pill.c7    { background: var(--c7); }
+  .line-pill.c10   { background: var(--c10); }
+  .line-pill.civis { background: var(--civis); }
+  .civis-label { font-size: .44rem; font-weight: 700; color: var(--civis);
+    text-transform: uppercase; letter-spacing: .05em; }
+
+  /* info central */
+  .card-info { min-width: 0; }
+  .card-dest { font-size: .82rem; font-weight: 700; color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -.01em; }
+  .card-meta { font-size: .62rem; color: var(--muted); margin-top: 3px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-times { margin-top: 7px; display: flex; gap: 10px; align-items: baseline; }
+  .time-block { }
+  .time-val { font-family: var(--mono); font-size: .75rem; font-weight: 700; color: var(--ink); line-height: 1; }
+  .time-lbl { font-size: .48rem; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .07em; margin-top: 1px; }
+  .time-sep { color: var(--border); font-size: .9rem; align-self: center; }
+  .delay-chip {
+    font-family: var(--mono); font-size: .65rem; font-weight: 700;
+    padding: 2px 6px; border-radius: 5px; margin-left: 4px;
+  }
+  .delay-chip.ok    { background: var(--c10-lt);  color: var(--ok); }
+  .delay-chip.leve  { background: var(--civis-lt); color: var(--warn); }
+  .delay-chip.grave { background: var(--c7-lt);    color: var(--bad); }
+  .delay-chip.nd    { background: var(--off);       color: var(--muted); }
+
+  /* countdown */
+  .card-countdown { text-align: center; flex-shrink: 0; padding: 0 4px; }
+  .countdown-num {
+    font-family: var(--mono); font-weight: 800; letter-spacing: -.04em; line-height: 1;
+  }
+  .countdown-num.xl  { font-size: 2.2rem; }
+  .countdown-num.ya  { font-size: 1.1rem; color: var(--bad); }
+  .countdown-num.verde { color: var(--ok); }
+  .countdown-num.ambar { color: var(--warn); }
+  .countdown-num.rojo  { color: var(--bad); }
+  .countdown-lbl { font-size: .5rem; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .07em; margin-top: 1px; }
+
+  /* ── ESTADO VACÍO ── */
+  .estado { background: var(--white); border: 1.5px solid var(--border);
+    border-radius: var(--r); padding: 32px 20px; text-align: center; color: var(--muted); }
+  .estado-icon { font-size: 2rem; display: block; margin-bottom: 10px; }
+  .estado p { font-size: .78rem; }
+
+  /* ── REFRESH BAR ── */
+  .refresh-row { display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px 0; }
+  .refresh-txt { font-size: .6rem; color: var(--muted); white-space: nowrap; }
+  .bar-wrap { flex: 1; height: 2px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, var(--c7), var(--blue), var(--c10));
+    border-radius: 2px; transition: width 1s linear; }
+
+  /* ── RT BADGE inline ── */
+  .card-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .meta-chip { font-size: .56rem; font-weight: 600; padding: 2px 6px;
+    border-radius: 5px; white-space: nowrap; }
+  .via-chip    { background: var(--blue-lt);  color: var(--blue); }
+  .andén-chip  { background: var(--off);       color: var(--muted); font-style: italic; }
+  .tren-chip   { background: var(--off);       color: var(--ink2); }
+  .civis-chip  { background: var(--civis-lt);  color: var(--civis); }
+
+  .card-next { display: flex; align-items: center; gap: 5px; margin-top: 6px;
+    padding: 5px 8px; background: var(--off); border-radius: 7px; }
+  .next-arrow { font-size: .8rem; color: var(--muted); flex-shrink: 0; }
+  .next-name  { font-size: .7rem; font-weight: 600; color: var(--ink2);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .rt-tag { display: inline-block; font-size: .46rem; font-weight: 700; padding: 1px 4px;
+    border-radius: 3px; background: rgba(14,158,87,.12); color: var(--ok);
+    vertical-align: middle; margin-left: 5px; text-transform: uppercase; letter-spacing: .05em; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="app-icon">🚆</div>
+      <div>
+        <div class="app-name">Trenes Madrid</div>
+        <div class="app-sub">C7 · C10 · C10 Civis</div>
+      </div>
+    </div>
+    <div class="clock-wrap">
+      <div class="clock-time" id="clock">--:--</div>
+      <div class="clock-date" id="date-lbl"></div>
+    </div>
+  </div>
+
+  <!-- RT STATUS -->
+  <div class="rt-pill">
+    <div class="rt-dot" id="rt-dot"></div>
+    <span class="rt-txt" id="rt-txt">Conectando…</span>
+    <span class="rt-time" id="rt-last"></span>
+  </div>
+
+  <!-- ACCESO RÁPIDO -->
+  <div class="section">
+    <div class="section-label">Acceso rápido</div>
+    <div class="quick-row">
+      <button class="quick-btn" onclick="setQuick('NMINS')" id="qb-NMINS">
+        <span class="qb-icon">🏙️</span><span class="qb-name">N.Ministerios</span>
+      </button>
+      <button class="quick-btn" onclick="setQuick('BARRIAL')" id="qb-BARRIAL">
+        <span class="qb-icon">🏡</span><span class="qb-name">El Barrial</span>
+      </button>
+      <button class="quick-btn" onclick="setQuick('ROZAS')" id="qb-ROZAS">
+        <span class="qb-icon">🌳</span><span class="qb-name">Las Rozas</span>
+      </button>
+      <button class="quick-btn" onclick="setQuick('ATOCHA')" id="qb-ATOCHA">
+        <span class="qb-icon">🏛️</span><span class="qb-name">Atocha</span>
+      </button>
+    </div>
+
+    <!-- SELECTOR -->
+    <div class="selectors">
+      <div class="sel-wrap">
+        <label>Estación</label>
+        <select id="sel-station" onchange="onStationChange()"></select>
+        <span class="sel-arrow">▾</span>
+      </div>
+      <div class="sel-wrap" style="flex:0 0 120px">
+        <label>Dirección</label>
+        <select id="sel-dir" onchange="renderTable()">
+          <option value="all">Todos</option>
+          <option value="norte">↑ Norte</option>
+          <option value="sur">↓ Sur</option>
+        </select>
+        <span class="sel-arrow">▾</span>
+      </div>
+    </div>
+
+    <!-- VÍA LEGEND -->
+    <div class="via-legend" id="via-legend">
+      <div class="vl-title">Leyenda de vías</div>
+      <div id="via-content"></div>
+    </div>
+  </div>
+
+  <!-- TRENES -->
+  <div class="trains-section">
+    <div class="trains-top">
+      <span class="trains-title" id="table-title">Próximos trenes</span>
+      <span class="trains-badge est" id="table-hint"></span>
+    </div>
+    <div class="trains-list" id="trains-list">
+      <div class="estado">
+        <span class="estado-icon">🚉</span>
+        <p>Selecciona una estación para ver los próximos trenes</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- REFRESH -->
+  <div class="refresh-row">
+    <span class="refresh-txt">Actualiza en <strong id="countdown">30</strong>s</span>
+    <div class="bar-wrap"><div class="bar-fill" id="bar-fill" style="width:100%"></div></div>
+  </div>
+
+</div>
+<script>
+// ═══════════════════════════════════════════════
+// VÍAS CONOCIDAS — solo las que son siempre fijas
+// ═══════════════════════════════════════════════
+// Formato: { stationId: { norte: 'X', sur: 'Y' } }
+// Si no se sabe con certeza, no se incluye → se muestra "Ver en andén"
+const KNOWN_VIAS = {
+  ROZAS:   { norte: '1', sur: '2' },
+  BARRIAL: { norte: '1', sur: '2' },
+  TORRELO: { norte: '1', sur: '2' },
+  GALAP:   { norte: '1', sur: '2' },
+  ZORRER:  { norte: '1', sur: '2' },
+  ESCORIAL:{ norte: '1', sur: '2' },
+  COTOS:   { norte: '1', sur: '2' },
+  CERCEDIL:{ norte: '1', sur: '2' },
+  PPÍO:    { norte: '1', sur: '2' },
+  // Estaciones con múltiples vías donde no podemos asegurar → omitidas:
+  // NMINS, CHAMART, ATOCHA, RECOL, SOL → "Ver en andén"
+};
+
+function getVia(stationId, dir, rtVia) {
+  // Si el RT nos da la vía real, úsala
+  if (rtVia && rtVia !== '' && rtVia !== '—') return rtVia;
+  // Si conocemos el patrón fijo de esa estación, úsalo
+  const known = KNOWN_VIAS[stationId];
+  if (known && known[dir]) return known[dir];
+  // Si no sabemos → indicar que revisen en andén
+  return null;
+}
+
+// ═══════════════════════════════════════════════
+// DATOS
+// ═══════════════════════════════════════════════
+const STATION_MAP = {
+  '60000':'PPÍO','60100':'PIRAM','60200':'DELIC','60300':'ATOCHA',
+  '60400':'RECOL','60500':'NMINS','60600':'CHAMART','60700':'FUENCAR',
+  '60800':'PITIS','61000':'MATAS','61100':'ROZAS','61200':'BARRIAL',
+  '61600':'VILLALBA','61700':'CERCEDIL','61800':'COTOS',
+  '60550':'SOL','60650':'FMORA','61050':'MAJADAH','61250':'PINAR',
+  '61350':'TORRELO','61450':'GALAP','61550':'ZORRER','61650':'ESCORIAL',
+};
+const SNAMES = {
+  PPÍO:'Príncipe Pío',PIRAM:'Pirámides',DELIC:'Delicias',ATOCHA:'Atocha',
+  RECOL:'Recoletos',NMINS:'Nuevos Ministerios',CHAMART:'Chamartín',
+  FUENCAR:'Fuencarral',PITIS:'Pitis',MATAS:'Las Matas',ROZAS:'Las Rozas',
+  BARRIAL:'El Barrial',VILLALBA:'Villalba',CERCEDIL:'Cercedilla',COTOS:'Cotos',
+  SOL:'Sol',FMORA:'Fuente de la Mora',MAJADAH:'Majadahonda',
+  PINAR:'Pinar de las Rozas',TORRELO:'Torrelodones',
+  GALAP:'Galapagar-La Navata',ZORRER:'Las Zorreras-Navas',ESCORIAL:'El Escorial',
+};
+
+const C7N=[
+  {id:'PPÍO',t:0},{id:'PIRAM',t:3},{id:'DELIC',t:5},{id:'ATOCHA',t:8},
+  {id:'RECOL',t:11},{id:'NMINS',t:14},{id:'CHAMART',t:20},{id:'FUENCAR',t:26},
+  {id:'PITIS',t:30},{id:'MATAS',t:38},{id:'ROZAS',t:43},{id:'BARRIAL',t:47},
+  {id:'VILLALBA',t:59},{id:'CERCEDIL',t:77},{id:'COTOS',t:112},
+];
+const C10N=[
+  {id:'ATOCHA',t:0},{id:'SOL',t:4},{id:'NMINS',t:9},{id:'CHAMART',t:15},
+  {id:'FMORA',t:19},{id:'MAJADAH',t:26},{id:'ROZAS',t:33},{id:'BARRIAL',t:37},
+  {id:'PINAR',t:40},{id:'TORRELO',t:48},{id:'GALAP',t:55},{id:'ZORRER',t:60},{id:'ESCORIAL',t:68},
+];
+const CIVN=[
+  {id:'ATOCHA',t:0},{id:'SOL',t:4},{id:'NMINS',t:9},{id:'CHAMART',t:15},
+  {id:'ROZAS',t:29},{id:'BARRIAL',t:33},{id:'TORRELO',t:40},
+  {id:'GALAP',t:47},{id:'ZORRER',t:52},{id:'ESCORIAL',t:60},
+];
+function inv(s){const mx=s[s.length-1].t;return[...s].reverse().map(x=>({...x,t:mx-x.t}));}
+const C7S=inv(C7N),C10S=inv(C10N),CIVS=inv(CIVN);
+
+const ALL_STATIONS=[
+  {id:'NMINS',name:'Nuevos Ministerios',lines:['C7','C10','C10Civis']},
+  {id:'CHAMART',name:'Chamartín',lines:['C7','C10','C10Civis']},
+  {id:'ROZAS',name:'Las Rozas',lines:['C7','C10','C10Civis']},
+  {id:'BARRIAL',name:'El Barrial',lines:['C7','C10','C10Civis']},
+  {id:'ATOCHA',name:'Atocha Cercanías',lines:['C7','C10','C10Civis']},
+  {id:'PPÍO',name:'Príncipe Pío',lines:['C7']},
+  {id:'PIRAM',name:'Pirámides',lines:['C7']},
+  {id:'DELIC',name:'Delicias',lines:['C7']},
+  {id:'RECOL',name:'Recoletos',lines:['C7','C10','C10Civis']},
+  {id:'FUENCAR',name:'Fuencarral',lines:['C7']},
+  {id:'PITIS',name:'Pitis',lines:['C7']},
+  {id:'MATAS',name:'Las Matas',lines:['C7']},
+  {id:'VILLALBA',name:'Villalba',lines:['C7','C10','C10Civis']},
+  {id:'CERCEDIL',name:'Cercedilla',lines:['C7']},
+  {id:'COTOS',name:'Cotos',lines:['C7']},
+  {id:'SOL',name:'Sol',lines:['C10','C10Civis']},
+  {id:'FMORA',name:'Fuente de la Mora',lines:['C10']},
+  {id:'MAJADAH',name:'Majadahonda',lines:['C10']},
+  {id:'PINAR',name:'Pinar de las Rozas',lines:['C10']},
+  {id:'TORRELO',name:'Torrelodones',lines:['C10','C10Civis']},
+  {id:'GALAP',name:'Galapagar-La Navata',lines:['C10','C10Civis']},
+  {id:'ZORRER',name:'Las Zorreras-Navas',lines:['C10','C10Civis']},
+  {id:'ESCORIAL',name:'El Escorial',lines:['C10','C10Civis']},
+];
+
+const VIA_LEGENDS={
+  NMINS:[{via:'1',dir:'→ Chamartín / Las Rozas / norte'},{via:'2',dir:'← Atocha / Príncipe Pío / sur'}],
+  CHAMART:[{via:'1',dir:'→ Fuencarral / norte (C7)'},{via:'2',dir:'← Nuevos Min / sur (C7)'},{via:'3',dir:'→ Las Rozas / El Escorial (C10)'},{via:'4',dir:'← Sol / Atocha (C10)'}],
+  ROZAS:[{via:'1',dir:'→ El Barrial / Villalba / norte'},{via:'2',dir:'← Chamartín / Madrid / sur'}],
+  BARRIAL:[{via:'1',dir:'→ Villalba / norte'},{via:'2',dir:'← Las Rozas / Madrid / sur'}],
+  ATOCHA:[{via:'1',dir:'→ Sol / Nuevos Min / norte'},{via:'2',dir:'← sur'}],
+  SOL:[{via:'1',dir:'→ Nuevos Ministerios / norte'},{via:'2',dir:'← Atocha / sur'}],
+};
+
+// ═══════════════════════════════════════════════
+// RT
+// ═══════════════════════════════════════════════
+let flotaData=null,rtLastUpdate=null,rtConnected=false;
+
+async function fetchFlota(){
+  const ts=Date.now();
+  const urls=[
+    `/api/flota?v=${ts}`,                                                                                      // proxy Vercel (producción)
+    `https://tiempo-real.renfe.com/renfe-visor/flota.json?v=${ts}`,                                           // directo (por si acaso)
+    `https://corsproxy.io/?url=${encodeURIComponent('https://tiempo-real.renfe.com/renfe-visor/flota.json')}&v=${ts}`, // fallback CORS
+  ];
+  for(const url of urls){
+    try{
+      const r=await fetch(url,{cache:'no-store'});
+      if(!r.ok) continue;
+      const j=await r.json();
+      if(!j.trenes) continue;
+      flotaData=j; rtLastUpdate=new Date(); rtConnected=true;
+      setRTStatus('on'); return true;
+    }catch(e){}
+  }
+  rtConnected=false; setRTStatus('err'); return false;
+}
+
+function setRTStatus(s){
+  const dot=document.getElementById('rt-dot');
+  const txt=document.getElementById('rt-txt');
+  const last=document.getElementById('rt-last');
+  dot.className='rt-dot '+s;
+  if(s==='on'){
+    txt.textContent=`En directo · ${flotaData.trenes.length} trenes activos`;
+    const t=rtLastUpdate;
+    last.textContent=`${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
+    document.getElementById('table-hint').className='trains-badge';
+    document.getElementById('table-hint').textContent='Tiempo real';
+  }else{
+    txt.textContent='Sin conexión · Horario oficial';
+    last.textContent='';
+    document.getElementById('table-hint').className='trains-badge est';
+    document.getElementById('table-hint').textContent='Estimado';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// LÓGICA TRENES
+// ═══════════════════════════════════════════════
+function minToH(m){const h=Math.floor(m/60)%24,mm=m%60;return`${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;}
+function hToMin(s){const[h,m]=s.split(':').map(Number);return h*60+m;}
+function nextIn(seq,id){const i=seq.findIndex(x=>x.id===id);return i>=0&&i<seq.length-1?seq[i+1]:null;}
+
+function isCivis(t){
+  if(t.codLinea!=='C10') return false;
+  const sig=STATION_MAP[t.codEstSig]||'';
+  const act=STATION_MAP[t.codEstAct]||'';
+  if(act==='CHAMART'&&sig==='ROZAS') return true;
+  return false;
+}
+
+function getTrainsRT(sid,dirFilter){
+  if(!flotaData?.trenes) return[];
+  const now=new Date(),nowMin=now.getHours()*60+now.getMinutes();
+  const res=[];
+  for(const t of flotaData.trenes){
+    if(t.nucleo!=='30') continue;
+    if(t.codLinea!=='C7'&&t.codLinea!=='C10') continue;
+    const civ=isCivis(t);
+    const seqN=t.codLinea==='C7'?C7N:(civ?CIVN:C10N);
+    const seqS=t.codLinea==='C7'?C7S:(civ?CIVS:C10S);
+    const actId=STATION_MAP[t.codEstAct]||null;
+    const sigId=STATION_MAP[t.codEstSig]||null;
+    if(!actId&&!sigId) continue;
+    const aN=seqN.findIndex(x=>x.id===actId),sN=seqN.findIndex(x=>x.id===sigId);
+    const goN=sN>aN&&sN>=0;
+    const dir=goN?'norte':'sur';
+    const seq=goN?seqN:seqS;
+    if(dirFilter!=='all'&&dirFilter!==dir) continue;
+    const actIdx=seq.findIndex(x=>x.id===actId);
+    const tgtIdx=seq.findIndex(x=>x.id===sid);
+    if(tgtIdx<0) continue;
+    if(actIdx>=0&&actIdx>tgtIdx) continue;
+    let estMin=null;
+    if(t.horaLlegadaSigEst){
+      const sigH=hToMin(t.horaLlegadaSigEst.split('T')[1].substring(0,5));
+      const sigIdx=seq.findIndex(x=>x.id===sigId);
+      if(sigIdx>=0&&tgtIdx>=sigIdx){
+        estMin=sigH+(seq[tgtIdx].t-seq[sigIdx].t);
+      }
+    }
+    if(estMin===null){
+      const oAct=actIdx>=0?seq[actIdx].t:0;
+      estMin=nowMin+(seq[tgtIdx].t-oAct);
+    }
+    const diff=estMin-nowMin;
+    if(diff<0||diff>90) continue;
+    const delay=parseInt(t.retrasoMin)||0;
+    const oficMin=estMin-delay;
+    const next=nextIn(seq,sid);
+    const destId=STATION_MAP[t.codEstDest]||null;
+    res.push({
+      line:t.codLinea,isCivis:civ,dir,
+      dest:destId?(SNAMES[destId]||t.codEstDest):(dir==='norte'?'Norte':'Sur'),
+      horaOfic:minToH(oficMin),horaEst:minToH(estMin),
+      delay,nextStop:next?SNAMES[next.id]||next.id:null,
+      via:getVia(sid, dir, t.nextVia||t.via),diff,isRT:true,tren:t.codTren,
+    });
+  }
+  res.sort((a,b)=>a.diff-b.diff);
+  return res.slice(0,8);
+}
+
+function getFreq(l,h){const p=(h>=7&&h<=9)||(h>=17&&h<=20);if(h<6||h>=23)return 60;return l==='C7'?(p?10:15):(p?15:20);}
+
+function getFallback(sid,dirFilter){
+  const st=ALL_STATIONS.find(s=>s.id===sid); if(!st) return[];
+  const now=new Date(),nowMin=now.getHours()*60+now.getMinutes();
+  const res=[];
+  const cfgs=[];
+  if(st.lines.includes('C7')){
+    if(dirFilter!=='sur')   cfgs.push({l:'C7',seq:C7N,dir:'norte',dest:'Cercedilla / Cotos',civ:false});
+    if(dirFilter!=='norte') cfgs.push({l:'C7',seq:C7S,dir:'sur',dest:'Príncipe Pío',civ:false});
+  }
+  if(st.lines.includes('C10')){
+    if(dirFilter!=='sur')   cfgs.push({l:'C10',seq:C10N,dir:'norte',dest:'El Escorial',civ:false});
+    if(dirFilter!=='norte') cfgs.push({l:'C10',seq:C10S,dir:'sur',dest:'Atocha',civ:false});
+  }
+  if(st.lines.includes('C10Civis')){
+    if(dirFilter!=='sur')   cfgs.push({l:'C10Civis',seq:CIVN,dir:'norte',dest:'El Escorial (Civis)',civ:true});
+    if(dirFilter!=='norte') cfgs.push({l:'C10Civis',seq:CIVS,dir:'sur',dest:'Atocha (Civis)',civ:true});
+  }
+  for(const c of cfgs){
+    const tgt=c.seq.find(x=>x.id===sid); if(!tgt) continue;
+    const freq=getFreq(c.l==='C10Civis'?'C10':c.l,now.getHours());
+    const base=Math.ceil((nowMin-tgt.t)/freq)*freq;
+    for(let i=0;i<=5;i++){
+      const arr=base+i*freq+tgt.t,diff=arr-nowMin;
+      if(diff<0||diff>90) continue;
+      const nxt=nextIn(c.seq,sid);
+      res.push({
+        line:c.l==='C10Civis'?'C10':c.l,isCivis:c.civ,dir:c.dir,dest:c.dest,
+        horaOfic:minToH(arr),horaEst:minToH(arr),delay:null,
+        nextStop:nxt?SNAMES[nxt.id]||nxt.id:null,
+        via:getVia(sid, c.dir, null),diff,isRT:false,
+      });
+    }
+  }
+  res.sort((a,b)=>a.diff-b.diff);
+  return res.slice(0,8);
+}
+
+// ═══════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════
+function renderTable(){
+  const sid=document.getElementById('sel-station').value;
+  const dir=document.getElementById('sel-dir').value;
+  if(!sid) return;
+  const trains=rtConnected?getTrainsRT(sid,dir):getFallback(sid,dir);
+  const list=document.getElementById('trains-list');
+  const st=ALL_STATIONS.find(s=>s.id===sid);
+  document.getElementById('table-title').textContent=st?.name||'Trenes';
+
+  if(!trains.length){
+    list.innerHTML=`<div class="estado"><span class="estado-icon">🌙</span><p>Sin trenes en los próximos 90 minutos</p></div>`;
+    return;
+  }
+
+  list.innerHTML=trains.map(t=>{
+    const stripe=t.isCivis?'civis':t.line==='C7'?'c7':'c10';
+    const pill=t.isCivis?'civis':t.line==='C7'?'c7':'c10';
+    const pillTxt=t.line==='C7'?'C-7':'C-10';
+    const civisBadge=t.isCivis?'<span class="civis-label">Civis</span>':'';
+
+    // countdown
+    const minC=t.diff<=3?'rojo':t.diff<=8?'ambar':'verde';
+    const cdHtml=t.diff===0
+      ?`<div class="countdown-num ya">YA</div>`
+      :`<div class="countdown-num xl ${minC}">${t.diff}</div><div class="countdown-lbl">min</div>`;
+
+    // delay chip
+    let dChip='';
+    if(t.delay===null)      dChip=`<span class="delay-chip nd">—</span>`;
+    else if(t.delay===0)    dChip=`<span class="delay-chip ok">Puntual</span>`;
+    else if(t.delay<=2)     dChip=`<span class="delay-chip leve">+${t.delay} min</span>`;
+    else                    dChip=`<span class="delay-chip grave">+${t.delay} min</span>`;
+
+    const rtTag=t.isRT?`<span class="rt-tag">RT</span>`:'';
+
+    // Vía
+    const viaHtml = t.via
+      ? `<span class="meta-chip via-chip">Vía ${t.via}</span>`
+      : `<span class="meta-chip andén-chip">Ver andén</span>`;
+
+    // Nombre tren
+    const trenHtml = t.tren
+      ? `<span class="meta-chip tren-chip">Tren ${t.tren}</span>`
+      : '';
+
+    // Civis note
+    const skipNote = t.isCivis
+      ? `<span class="meta-chip civis-chip">✦ Salta paradas</span>`
+      : '';
+
+    // Próxima estación — elemento destacado
+    const nextHtml = t.nextStop
+      ? `<div class="card-next"><span class="next-arrow">→</span><span class="next-name">${t.nextStop}</span></div>`
+      : '';
+
+    return `<div class="train-card${t.diff<=5?' inminent':''}">
+      <div class="card-stripe ${stripe}"></div>
+      <div class="card-body">
+        <div class="line-chip">
+          <div class="line-pill ${pill}">${pillTxt}</div>
+          ${civisBadge}
+        </div>
+        <div class="card-info">
+          <div class="card-dest">${t.dest}${rtTag}</div>
+          <div class="card-chips">${viaHtml}${trenHtml}${skipNote}</div>
+          ${nextHtml}
+          <div class="card-times">
+            <div class="time-block">
+              <div class="time-val">${t.horaOfic}</div>
+              <div class="time-lbl">Oficial</div>
+            </div>
+            <div class="time-sep">·</div>
+            <div class="time-block">
+              <div class="time-val">${t.horaEst}</div>
+              <div class="time-lbl">Estimada</div>
+            </div>
+            ${dChip}
+          </div>
+        </div>
+        <div class="card-countdown">${cdHtml}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════
+function updateViaLegend(id){
+  const leg=VIA_LEGENDS[id],el=document.getElementById('via-legend');
+  if(leg){
+    document.getElementById('via-content').innerHTML=leg.map(v=>
+      `<div class="via-row"><span class="via-badge">Vía ${v.via}</span>${v.dir}</div>`
+    ).join('');
+    el.classList.add('show');
+  }else el.classList.remove('show');
+}
+
+function setQuick(id){
+  document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('qb-'+id)?.classList.add('active');
+  document.getElementById('sel-station').value=id;
+  updateViaLegend(id);
+  renderTable();
+}
+
+function onStationChange(){
+  const id=document.getElementById('sel-station').value;
+  document.querySelectorAll('.quick-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('qb-'+id)?.classList.add('active');
+  updateViaLegend(id);
+  renderTable();
+}
+
+// ═══════════════════════════════════════════════
+// CLOCK + REFRESH
+// ═══════════════════════════════════════════════
+function updateClock(){
+  const n=new Date();
+  document.getElementById('clock').textContent=`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+  const days=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const months=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  document.getElementById('date-lbl').textContent=`${days[n.getDay()]} ${n.getDate()} ${months[n.getMonth()]}`;
+}
+
+const SECS=30; let cd=SECS;
+async function fullRefresh(){await fetchFlota();renderTable();cd=SECS;}
+function tick(){
+  if(--cd<0)cd=0;
+  document.getElementById('countdown').textContent=cd;
+  document.getElementById('bar-fill').style.width=(cd/SECS*100)+'%';
+  if(cd===0)fullRefresh();
+}
+
+function init(){
+  const sel=document.getElementById('sel-station');
+  sel.innerHTML='<option value="">— Elige estación —</option>';
+  [...ALL_STATIONS].sort((a,b)=>a.name.localeCompare(b.name)).forEach(s=>{
+    const icons=[...new Set(s.lines)].map(l=>l==='C7'?'🔴':l==='C10'?'🟢':'🟡').join('');
+    const o=document.createElement('option');
+    o.value=s.id;o.textContent=`${icons} ${s.name}`;
+    sel.appendChild(o);
+  });
+  updateClock();
+  setInterval(updateClock,10000);
+  setInterval(tick,1000);
+  fullRefresh();
+}
+init();
+</script>
+</body>
+</html>
